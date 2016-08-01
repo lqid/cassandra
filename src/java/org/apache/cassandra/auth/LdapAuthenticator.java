@@ -45,43 +45,46 @@ public class LdapAuthenticator implements IAuthenticator{
     private static final Logger logger = LoggerFactory.getLogger(LdapAuthenticator.class);
     private static final byte NUL = 0;
 
-    public LdapConnection ldapConnection = new LdapNetworkConnection("192.168.1.200", 389 );
+    private LdapConnection ldapConnection = new LdapNetworkConnection("192.168.1.200", 389 );
 
     private void setupLdapConnection () throws Exception {
         ldapConnection.setTimeOut(30);
         ldapConnection.bind("uid=cassandra,ou=people,dc=klevi,dc=local","cassandra");
-        //connection.unBind();
-        //connection.close();
     }
 
     // Do not allow anonymous access.
     public boolean requireAuthentication() { return true; }
 
-    private AuthenticatedUser authenticate(String username) throws AuthenticationException
+    private AuthenticatedUser authenticate(String username, String password) throws AuthenticationException
     {
-        System.out.println("Made it to authenticate!");
-        System.out.println("LDAP is connected? " + ldapConnection.isConnected());
-        System.out.println("LDAP is authenticated? " + ldapConnection.isAuthenticated());
+        boolean isLdapConnected = ldapConnection.isConnected();
+        boolean isLdapAuthenticated = ldapConnection.isAuthenticated();
+
+        Entry authenticatingLdapUser;
+
+        System.out.println("LDAP is connected? " + isLdapConnected);
+        System.out.println("LDAP is authenticated? " + isLdapAuthenticated);
 
         try
         {
-            ldapConnection.bind("uid=cassandra,ou=people,dc=klevi,dc=local","cassandra");
-            Entry authenticatingLdapUser = ldapConnection.lookup("uid="+username+",ou=people,dc=klevi,dc=local");
+            ldapConnection.bind("uid="+username+",ou=people,dc=klevi,dc=local",password);
+            authenticatingLdapUser = ldapConnection.lookup("uid="+username+",ou=people,dc=klevi,dc=local");
+            ldapConnection.unBind();
             if (authenticatingLdapUser != null)
             {
                 System.out.println(authenticatingLdapUser);
                 allowAuthentication(username);
+                return new AuthenticatedUser("cassandra");
             }
             else {
                 System.out.println("User is not found.");
+                return new AuthenticatedUser(AuthenticatedUser.ANONYMOUS_USERNAME);
             }
         }
-        catch (LdapException e){
-            System.out.println(e);
+        catch (Exception e){
             logger.trace("Error performing LDAP authentication", e);
             throw new AuthenticationException(e.toString());
         }
-        return new AuthenticatedUser("cassandra");
     }
 
     public Set<DataResource> protectedResources()
@@ -137,7 +140,7 @@ public class LdapAuthenticator implements IAuthenticator{
         {
             if (!complete)
                 throw new AuthenticationException("SASL negotiation not complete");
-            return authenticate(username);
+            return authenticate(username, password);
         }
 
         /**
@@ -178,7 +181,6 @@ public class LdapAuthenticator implements IAuthenticator{
 
             username = new String(user, StandardCharsets.UTF_8);
             password = new String(pass, StandardCharsets.UTF_8);
-            System.out.println(username + password);
         }
 
     }
