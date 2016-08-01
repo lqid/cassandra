@@ -29,8 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.exceptions.*;
 
-import org.apache.directory.api.ldap.model.entry.Entry;
-import org.apache.directory.api.ldap.model.exception.LdapException;
+import org.apache.directory.api.ldap.model.password.PasswordUtil;
 import org.apache.directory.ldap.client.api.LdapConnection;
 import org.apache.directory.ldap.client.api.LdapNetworkConnection;
 
@@ -45,45 +44,40 @@ public class LdapAuthenticator implements IAuthenticator{
     private static final Logger logger = LoggerFactory.getLogger(LdapAuthenticator.class);
     private static final byte NUL = 0;
 
-    private LdapConnection ldapConnection = new LdapNetworkConnection("192.168.1.200", 389 );
-
-    private void setupLdapConnection () throws Exception {
-        ldapConnection.setTimeOut(30);
-        ldapConnection.bind("uid=cassandra,ou=people,dc=klevi,dc=local","cassandra");
-    }
+    private LdapConnection ldapConnection = new LdapNetworkConnection("192.168.1.200", 389);
 
     // Do not allow anonymous access.
     public boolean requireAuthentication() { return true; }
 
     private AuthenticatedUser authenticate(String username, String password) throws AuthenticationException
     {
-        boolean isLdapConnected = ldapConnection.isConnected();
-        boolean isLdapAuthenticated = ldapConnection.isAuthenticated();
-
-        Entry authenticatingLdapUser;
-
-        System.out.println("LDAP is connected? " + isLdapConnected);
-        System.out.println("LDAP is authenticated? " + isLdapAuthenticated);
+        boolean isLdapConnected;
+        boolean isLdapAuthenticated;
 
         try
         {
             ldapConnection.bind("uid="+username+",ou=people,dc=klevi,dc=local",password);
-            authenticatingLdapUser = ldapConnection.lookup("uid="+username+",ou=people,dc=klevi,dc=local");
+            isLdapConnected = ldapConnection.isConnected();
+            isLdapAuthenticated = ldapConnection.isAuthenticated();
             ldapConnection.unBind();
-            if (authenticatingLdapUser != null)
+
+            System.out.println("LDAP is connected? " + isLdapConnected);
+            System.out.println("LDAP is authenticated? " + isLdapAuthenticated);
+
+            if (isLdapAuthenticated)
             {
-                System.out.println(authenticatingLdapUser);
-                allowAuthentication(username);
+                // Bypassing role management while still developing an IRoleManager implementation.
                 return new AuthenticatedUser("cassandra");
             }
             else {
                 System.out.println("User is not found.");
                 return new AuthenticatedUser(AuthenticatedUser.ANONYMOUS_USERNAME);
             }
+            // TODO Remove exception from control flow.
         }
         catch (Exception e){
             logger.trace("Error performing LDAP authentication", e);
-            throw new AuthenticationException(e.toString());
+            throw new AuthenticationException("Access denied");
         }
     }
 
@@ -98,27 +92,11 @@ public class LdapAuthenticator implements IAuthenticator{
     }
 
     public void setup() {
-        try
-        {
-            setupLdapConnection();
-        }
-        catch (Exception e)
-        {
-            logger.trace("Error setting up LDAP connection.", e);
-            throw new AuthenticationException(e.toString());
-        }
+
     }
 
     public SaslNegotiator newSaslNegotiator() {
         return new PlainTextSaslAuthenticator();
-    }
-
-    // Allows authentication of user.
-    private AuthenticatedUser allowAuthentication(String username)
-    throws RequestExecutionException, AuthenticationException
-    {
-        System.out.println("User found: " + username);
-        return new AuthenticatedUser(AuthenticatedUser.SYSTEM_USERNAME);
     }
 
     private class PlainTextSaslAuthenticator implements SaslNegotiator {

@@ -413,7 +413,10 @@
           	<exclusion groupId="log4j" artifactId="log4j"/>
           </dependency>
           <dependency groupId="joda-time" artifactId="joda-time" version="2.4" />
-        	
+            <dependency groupId="org.apache.directory.shared" artifactId="api-all">
+                <exclusion groupId="log4j" artifactId="log4j"/>
+            </dependency>
+
         </dependencyManagement>
         <developer id="alakshman" name="Avinash Lakshman"/>
         <developer id="aleksey" name="Aleksey Yeschenko"/>
