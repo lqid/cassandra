@@ -18,6 +18,7 @@
 package org.apache.cassandra.auth;
 
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Map;
@@ -29,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.exceptions.*;
 
+import org.apache.directory.api.ldap.model.exception.LdapException;
 import org.apache.directory.ldap.client.api.LdapConnection;
 import org.apache.directory.ldap.client.api.LdapNetworkConnection;
 
@@ -74,7 +76,7 @@ public class LdapAuthenticator implements IAuthenticator{
             }
             // TODO Remove exception from control flow.
         }
-        catch (Exception e){
+        catch (LdapException e){
             logger.trace("Error performing LDAP authentication", e);
             throw new AuthenticationException("Access denied");
         }
