@@ -18,7 +18,6 @@
 package org.apache.cassandra.auth;
 
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Map;
@@ -74,7 +73,6 @@ public class LdapAuthenticator implements IAuthenticator{
                 System.out.println("User is not found.");
                 return new AuthenticatedUser(AuthenticatedUser.ANONYMOUS_USERNAME);
             }
-            // TODO Remove exception from control flow.
         }
         catch (LdapException e){
             logger.trace("Error performing LDAP authentication", e);
